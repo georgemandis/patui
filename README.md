@@ -8,6 +8,21 @@ A terminal-based image editor with Vim-style modal controls. Load images (PNG, J
 
 ## Installation
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install georgemandis/tap/patui
+```
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add georgemandis https://github.com/georgemandis/scoop-bucket
+scoop install patui
+```
+
+### From source
+
 ```bash
 bun install
 ```
@@ -16,14 +31,16 @@ bun install
 
 ```bash
 # Load a local image
-bun src/index.tsx mona.png
+patui mona.png
 
 # Load from URL
-bun src/index.tsx https://example.com/image.png
+patui https://example.com/image.png
 
 # Start with blank canvas (sized to your terminal)
-bun src/index.tsx
+patui
 ```
+
+If running from source, replace `patui` with `bun src/index.tsx`.
 
 ## Modes
 
