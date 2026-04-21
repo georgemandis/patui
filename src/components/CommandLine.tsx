@@ -1,5 +1,6 @@
 import { Box, Text, useInput } from "ink";
 import { useStore } from "../state/store.js";
+import { executeCommand } from "../commands/handlers.js";
 
 export function CommandLine() {
   const mode = useStore((s) => s.mode);
@@ -11,7 +12,7 @@ export function CommandLine() {
     if (mode !== "command") return;
 
     if (key.return) {
-      // Command execution will be wired up in Task 9
+      executeCommand(commandText);
       setCommandText("");
       setMode("normal");
     } else if (key.escape) {
