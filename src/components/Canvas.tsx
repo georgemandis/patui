@@ -1,5 +1,5 @@
 import { Box, Text, useStdout } from "ink";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../state/store.js";
 import { CanvasRenderer } from "../core/canvas-renderer.js";
 import { Sampler } from "../core/sampler.js";
@@ -12,13 +12,23 @@ export function Canvas() {
   const cursorCol = useStore((s) => s.cursorCol);
   const cursorRow = useStore((s) => s.cursorRow);
   const rendererRef = useRef<CanvasRenderer | null>(null);
+  const gridRef = useRef<import("../core/image-buffer.js").RGB[][] | null>(null);
+  const [cursorVisible, setCursorVisible] = useState(true);
 
+  // Blink timer — toggle cursor visibility every 500ms
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCursorVisible((v) => !v);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Main render
   useEffect(() => {
     if (!image || !viewport) return;
 
-    // Calculate canvas area position (after toolbar sidebar)
-    const canvasOffsetX = 5; // sidebar width
-    const canvasOffsetY = 1; // menu bar height
+    const canvasOffsetX = 5;
+    const canvasOffsetY = 1;
     const termSize = viewport.getTermSize();
 
     if (!rendererRef.current) {
@@ -28,8 +38,9 @@ export function Canvas() {
     }
 
     const grid = Sampler.sample(image, viewport, editLayer);
-    rendererRef.current.render(grid, cursorCol, cursorRow);
-  }, [image, editLayer, viewport, cursorCol, cursorRow]);
+    gridRef.current = grid;
+    rendererRef.current.render(grid, cursorCol, cursorRow, cursorVisible);
+  }, [image, editLayer, viewport, cursorCol, cursorRow, cursorVisible]);
 
   if (!image) {
     return (
@@ -39,7 +50,6 @@ export function Canvas() {
     );
   }
 
-  // Reserve space for the canvas — actual rendering is via direct stdout writes
   const termSize = viewport?.getTermSize() ?? { w: 40, h: 20 };
   return (
     <Box flexGrow={1} width={termSize.w} height={termSize.h}>

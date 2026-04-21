@@ -14,8 +14,11 @@ export class CanvasRenderer {
     this.height = height;
   }
 
+  private lastCursorCol: number = -1;
+  private lastCursorRow: number = -1;
+
   /** Render a full grid, only writing cells that changed from last frame */
-  render(grid: RGB[][], cursorCol?: number, cursorRow?: number) {
+  render(grid: RGB[][], cursorCol?: number, cursorRow?: number, cursorVisible: boolean = true) {
     let output = "";
 
     for (let row = 0; row < Math.min(grid.length, this.height); row++) {
@@ -24,20 +27,24 @@ export class CanvasRenderer {
         const prev = this.lastFrame?.[row]?.[col];
 
         const isCursor = col === cursorCol && row === cursorRow;
-        const changed = !prev || prev.r !== pixel.r || prev.g !== pixel.g || prev.b !== pixel.b || isCursor;
+        const wasCursor = col === this.lastCursorCol && row === this.lastCursorRow;
+        const changed = !prev || prev.r !== pixel.r || prev.g !== pixel.g || prev.b !== pixel.b || isCursor || wasCursor;
 
         if (changed) {
           // Move cursor to position
           output += `\x1b[${this.offsetY + row + 1};${this.offsetX + col + 1}H`;
-          if (isCursor) {
-            // Invert colors for cursor
-            output += `\x1b[38;2;${255 - pixel.r};${255 - pixel.g};${255 - pixel.b}m\u2588\x1b[0m`;
+          if (isCursor && cursorVisible) {
+            // Invert colors for cursor + use a different character for visibility
+            output += `\x1b[7;38;2;${pixel.r};${pixel.g};${pixel.b}m\u2592\x1b[0m`;
           } else {
             output += `\x1b[38;2;${pixel.r};${pixel.g};${pixel.b}m\u2588\x1b[0m`;
           }
         }
       }
     }
+
+    this.lastCursorCol = cursorCol ?? -1;
+    this.lastCursorRow = cursorRow ?? -1;
 
     if (output) {
       process.stdout.write(output);
