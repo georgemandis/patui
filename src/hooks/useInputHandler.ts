@@ -103,7 +103,7 @@ function pushUndo() {
   });
 }
 
-/** Delete (clear edits) for a range of grid rows */
+/** Delete (paint with bg color) for a range of grid rows */
 function deleteRows(startRow: number, count: number) {
   const store = useStore.getState();
   if (!store.editLayer || !store.cropRegion) return;
@@ -113,7 +113,7 @@ function deleteRows(startRow: number, count: number) {
   for (let r = startRow; r < startRow + count && r < crop.gridH; r++) {
     for (let c = 0; c < crop.gridW; c++) {
       const region = cellToSourceRegion(crop, c, r);
-      newLayer.clearRegion(region.x, region.y, region.w, region.h);
+      newLayer.paintRegion(region.x, region.y, region.w, region.h, store.bgColor);
     }
   }
   store.setEditLayer(newLayer);
@@ -128,7 +128,7 @@ function deleteToEndOfRow() {
   const newLayer = store.editLayer.clone();
   for (let c = store.cursorCol; c < crop.gridW; c++) {
     const region = cellToSourceRegion(crop, c, store.cursorRow);
-    newLayer.clearRegion(region.x, region.y, region.w, region.h);
+    newLayer.paintRegion(region.x, region.y, region.w, region.h, store.bgColor);
   }
   store.setEditLayer(newLayer);
 }
@@ -143,7 +143,7 @@ function deleteCell() {
   for (let i = 0; i < n; i++) {
     const col = Math.min(store.cursorCol + i, store.cropRegion.gridW - 1);
     const region = cellToSourceRegion(store.cropRegion, col, store.cursorRow);
-    newLayer.clearRegion(region.x, region.y, region.w, region.h);
+    newLayer.paintRegion(region.x, region.y, region.w, region.h, store.bgColor);
   }
   store.setEditLayer(newLayer);
 }
@@ -363,6 +363,16 @@ function handleNormalMode(input: string, key: any, store: ReturnType<typeof useS
   // p — paste
   if (input === "p") {
     pasteYank();
+    resetVimState();
+    return;
+  }
+  // X — swap fg/bg colors
+  if (input === "X") {
+    const fg = store.fgColor;
+    const bg = store.bgColor;
+    store.setFgColor(bg);
+    store.setBgColor(fg);
+    store.setMessage("Swapped FG/BG");
     resetVimState();
     return;
   }

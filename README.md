@@ -72,6 +72,7 @@ All navigation commands accept a numeric prefix (e.g., `5j` moves down 5 rows).
 | `yy` | Yank (copy) current row |
 | `5yy` | Yank 5 rows |
 | `p` | Paste yanked rows at cursor |
+| `X` | Swap foreground/background colors |
 | `u` | Undo |
 | Ctrl+R | Redo |
 
@@ -105,7 +106,9 @@ The bottom bar shows all 16 colors. Active color is highlighted. Eyedropper pick
 | `:q` or `:q!` | Quit |
 | `:set zoom N` | Set zoom level |
 | `:set brush N` | Set brush size |
-| `:color N` | Select palette color 1-16 |
+| `:set fg N` | Set foreground to palette color 1-16 |
+| `:set bg N` | Set background to palette color 1-16 |
+| `:color N` | Select foreground palette color 1-16 |
 | `:goto X Y` or `:g X Y` | Jump cursor to source pixel coordinate |
 | `:gray` | Toggle grayscale filter |
 | `:palette <name>` | Limit colors (`cga`, `gameboy`, `websafe`) |

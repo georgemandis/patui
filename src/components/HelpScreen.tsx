@@ -46,6 +46,7 @@ const HELP_LINES = `
   yy                     Yank (copy) current row
   5yy                    Yank 5 rows
   p                      Paste yanked rows at cursor
+  X                      Swap foreground/background colors
   u                      Undo
   Ctrl+R                 Redo
 
@@ -73,7 +74,9 @@ const HELP_LINES = `
   :q / :q!               Quit
   :set zoom N            Set zoom level
   :set brush N           Set brush size
-  :color N               Select palette color 1-16
+  :set fg N              Set foreground to palette color 1-16
+  :set bg N              Set background to palette color 1-16
+  :color N               Select foreground palette color 1-16
   :goto X Y / :g X Y    Jump to source pixel coordinate
   :gray                  Toggle grayscale filter
   :palette <name>        Limit colors (cga, gameboy, websafe)

@@ -122,6 +122,22 @@ export async function executeCommand(input: string) {
         store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
       } else if (prop === "brush") {
         useStore.setState({ brushSize: parseInt(value) || 1 });
+      } else if (prop === "fg") {
+        const n = parseInt(value);
+        if (n >= 1 && n <= 16 && MS_PAINT_PALETTE[n - 1]) {
+          store.setFgColor(MS_PAINT_PALETTE[n - 1]);
+          store.setMessage(`FG color ${n}`);
+        } else {
+          store.setMessage("Usage: :set fg 1-16");
+        }
+      } else if (prop === "bg") {
+        const n = parseInt(value);
+        if (n >= 1 && n <= 16 && MS_PAINT_PALETTE[n - 1]) {
+          store.setBgColor(MS_PAINT_PALETTE[n - 1]);
+          store.setMessage(`BG color ${n}`);
+        } else {
+          store.setMessage("Usage: :set bg 1-16");
+        }
       }
       break;
     }
