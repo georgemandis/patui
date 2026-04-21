@@ -70,6 +70,19 @@ export class EditLayer {
     return copy;
   }
 
+  /** Remove all edits in a rectangular region (restore to base image) */
+  clearRegion(x: number, y: number, w: number, h: number) {
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        const px = x + dx;
+        const py = y + dy;
+        if (px >= 0 && px < this.width && py >= 0 && py < this.height) {
+          this.pixels.delete(this.key(px, py));
+        }
+      }
+    }
+  }
+
   clear() {
     this.pixels.clear();
   }

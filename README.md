@@ -25,30 +25,55 @@ bun src/index.tsx
 
 | Mode | Enter | Exit | Behavior |
 |------|-------|------|----------|
-| Normal | Esc | — | Move cursor, switch tools, zoom, undo/redo |
-| Paint | `i` or `p` | Esc | Movement applies the active tool continuously |
+| Normal | Esc | — | Navigate, edit, zoom, undo/redo |
+| Paint | `i` | Esc | Movement applies the active tool continuously |
 | Text | `t` | Esc (commits) | Type characters rendered onto the image |
 | Command | `:` | Esc or Enter | Text commands for file I/O, filters, settings |
 
-## Normal Mode Keys
+## Navigation
+
+All navigation commands accept a numeric prefix (e.g., `5j` moves down 5 rows).
 
 | Key | Action |
 |-----|--------|
 | h/j/k/l or arrows | Move cursor |
-| b | Brush tool |
-| e | Eraser tool |
-| f | Fill (bucket) tool |
-| d | Eyedropper (color picker) tool |
+| `gg` | Go to top-left |
+| `G` | Go to bottom |
+| `0` or `^` | Start of row |
+| `$` | End of row |
+| `W` | Jump to next color boundary |
+| `B` | Jump to previous color boundary |
+| Ctrl+D | Half page down |
+| Ctrl+U | Half page up |
+| `+` / `=` | Zoom in |
+| `-` | Zoom out |
+
+## Tools
+
+| Key | Action |
+|-----|--------|
+| b | Brush |
+| e | Eraser |
+| f | Fill (bucket) |
+| c | Eyedropper (color picker) |
 | t | Enter Text mode |
-| i or p | Enter Paint mode |
-| : | Enter Command mode |
-| + / = | Zoom in |
-| - | Zoom out |
-| u | Undo |
+| Space / Enter | Apply tool at cursor |
+
+## Editing (Vim-style)
+
+| Key | Action |
+|-----|--------|
+| `x` | Delete pixel at cursor (e.g., `5x` deletes 5) |
+| `dd` | Delete (clear) current row |
+| `5dd` | Delete 5 rows |
+| `dG` | Delete from cursor row to bottom |
+| `dgg` | Delete from top to cursor row |
+| `D` | Delete from cursor to end of row |
+| `yy` | Yank (copy) current row |
+| `5yy` | Yank 5 rows |
+| `p` | Paste yanked rows at cursor |
+| `u` | Undo |
 | Ctrl+R | Redo |
-| 1-9, 0 | Select palette color 1-10 |
-| ! @ # $ % ^ | Select palette color 11-16 |
-| Space or Enter | Apply tool at cursor |
 
 ## Text Mode
 
@@ -58,6 +83,15 @@ Press `t` to enter text mode. Characters you type are rasterized onto the source
 - Backspace removes the last character
 - Enter commits the current line and moves the cursor down
 - Escape commits and returns to Normal mode
+
+## Color Palette
+
+| Key | Action |
+|-----|--------|
+| `!` `@` `#` `$` `%` `^` `&` `*` `(` `)` | Select palette color 1-10 |
+| `:color N` | Select any palette color 1-16 |
+
+The bottom bar shows all 16 colors. Active color is highlighted. Eyedropper picks appear in the recent colors section.
 
 ## Commands
 
@@ -71,16 +105,17 @@ Press `t` to enter text mode. Characters you type are rasterized onto the source
 | `:q` or `:q!` | Quit |
 | `:set zoom N` | Set zoom level |
 | `:set brush N` | Set brush size |
+| `:color N` | Select palette color 1-16 |
 | `:goto X Y` or `:g X Y` | Jump cursor to source pixel coordinate |
 | `:gray` | Toggle grayscale filter |
 | `:palette <name>` | Limit colors (`cga`, `gameboy`, `websafe`) |
 | `:dither` | Toggle Floyd-Steinberg dithering |
 | `:reset` | Clear all filters |
-| `:help` | Show available commands |
+| `:help` | Full-screen help (scrollable) |
 
 ## Filters
 
-Filters apply live on the canvas and are included in exports. They are also undoable.
+Filters apply live on the canvas and are included in exports. All filter changes are undoable.
 
 - **Grayscale** (`:gray`) — luminance-based desaturation
 - **Palette limiting** (`:palette cga|gameboy|websafe`) — quantize to retro color palettes
@@ -91,14 +126,10 @@ Filters apply live on the canvas and are included in exports. They are also undo
 
 | Extension | Format |
 |-----------|--------|
-| `.png` / `.jpg` | Image file (pixels rendered as blocks matching terminal aspect ratio) |
+| `.png` / `.jpg` | Image file (block pixels, terminal aspect ratio) |
 | `.ans` | ANSI art with true-color escape codes |
 | `.txt` | Plain block characters, no color |
 | `:wc` | ANSI art copied to clipboard |
-
-## Color Palette
-
-The bottom bar shows 16 MS Paint colors with their key bindings. The currently active color is highlighted. Recent colors from eyedropper picks appear alongside.
 
 ## Layout
 
@@ -109,12 +140,12 @@ The bottom bar shows 16 MS Paint colors with their key bindings. The currently a
 │ [B]│                                        │
 │ [E]│                                        │
 │ [F]│         Canvas Area                    │
-│ [D]│                                        │
+│ [C]│                                        │
 │    │                                        │
 │ FG │                                        │
 │ BG │                                        │
 ├────┴────────────────────────────────────────┤
-│ 123456789!@#$%^  [recent colors]            │
+│ !@#$%^&*()······  [recent colors]           │
 ├─────────────────────────────────────────────┤
 │ -- NORMAL --  brush(1)  [x,y] WxH  Zoom:1x │
 └─────────────────────────────────────────────┘
@@ -123,11 +154,9 @@ The bottom bar shows 16 MS Paint colors with their key bindings. The currently a
 ## Roadmap
 
 - Visual/selection mode (rectangle select, copy/paste, move regions)
-- Zoom tool (click-to-zoom)
 - Line and shape tools (rectangle, circle, line)
 - Layers
 - Custom color picker (RGB/HSL input)
-- Import/export palette files
 - Mouse support
 - Resize canvas
 - GIF export

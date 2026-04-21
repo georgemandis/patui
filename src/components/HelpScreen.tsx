@@ -2,33 +2,52 @@ import { Box, Text, useStdout } from "ink";
 import { useStore } from "../state/store.js";
 
 const HELP_LINES = `
-  TUI Paint — Help                                      (Esc to close, j/k to scroll)
+  TUI Paint — Help                                (Esc/q to close, j/k to scroll)
   ═══════════════
 
   MODES
   ─────
   Normal    Esc          Move cursor, switch tools, zoom, undo/redo
-  Paint     i / p        Movement applies the active tool continuously
+  Paint     i            Movement applies the active tool continuously
   Text      t            Type characters rendered onto the image
   Command   :            Text commands for file I/O, filters, settings
 
-  NORMAL MODE
-  ───────────
-  h/j/k/l or arrows     Move cursor
+  NAVIGATION (NORMAL MODE)
+  ────────────────────────
+  h/j/k/l or arrows     Move cursor (accepts count: 5j = move 5 down)
+  gg                     Go to top-left
+  G                      Go to bottom
+  0 or ^                 Go to start of row
+  $                      Go to end of row
+  W                      Jump to next color boundary
+  B                      Jump to previous color boundary
+  Ctrl+D                 Half page down
+  Ctrl+U                 Half page up
+  + / =                  Zoom in
+  -                      Zoom out
+
+  TOOLS
+  ─────
   b                      Brush tool
   e                      Eraser tool
   f                      Fill (bucket) tool
-  d                      Eyedropper (color picker)
+  c                      Eyedropper (color picker)
   t                      Enter Text mode
-  i / p                  Enter Paint mode
-  :                      Enter Command mode
-  + / =                  Zoom in
-  -                      Zoom out
+  Space / Enter          Apply tool at cursor
+
+  EDITING (VIM-STYLE)
+  ───────────────────
+  x                      Delete pixel at cursor (accepts count: 5x)
+  dd                     Delete (clear) current row
+  5dd                    Delete 5 rows
+  dG                     Delete from cursor to bottom
+  dgg                    Delete from top to cursor
+  D                      Delete from cursor to end of row
+  yy                     Yank (copy) current row
+  5yy                    Yank 5 rows
+  p                      Paste yanked rows at cursor
   u                      Undo
   Ctrl+R                 Redo
-  1-9, 0                 Select palette color 1-10
-  ! @ # $ % ^            Select palette color 11-16
-  Space / Enter          Apply tool at cursor
 
   TEXT MODE
   ─────────
@@ -37,6 +56,12 @@ const HELP_LINES = `
   Backspace              Delete last character
   Enter                  Commit line, move cursor down
   Escape                 Commit and return to Normal
+
+  COLOR PALETTE
+  ─────────────
+  ! @ # $ % ^ & * ( )   Select palette color 1-10
+  :color N               Select palette color by number (1-16)
+  Eyedropper (c) picks from canvas; recent picks shown in bar.
 
   COMMANDS
   ────────
@@ -48,11 +73,13 @@ const HELP_LINES = `
   :q / :q!               Quit
   :set zoom N            Set zoom level
   :set brush N           Set brush size
+  :color N               Select palette color 1-16
   :goto X Y / :g X Y    Jump to source pixel coordinate
   :gray                  Toggle grayscale filter
   :palette <name>        Limit colors (cga, gameboy, websafe)
   :dither                Toggle Floyd-Steinberg dithering
   :reset                 Clear all filters
+  :help                  This screen
 
   FILTERS
   ───────
@@ -72,12 +99,6 @@ const HELP_LINES = `
   .ans                   ANSI art with true-color escape codes
   .txt                   Plain block characters, no color
   :wc                    Copy ANSI art to clipboard
-
-  COLOR PALETTE
-  ─────────────
-  Bottom bar shows 16 colors with key labels.
-  Active color is highlighted. Eyedropper picks
-  appear in the recent colors section.
 `.split("\n");
 
 export function HelpScreen() {

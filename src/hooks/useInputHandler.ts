@@ -6,7 +6,7 @@ import { FillTool } from "../tools/fill.js";
 import { EyedropperTool } from "../tools/eyedropper.js";
 import { undoStack } from "../state/undo.js";
 import { rasterizeText } from "../tools/text.js";
-import { cellToSource } from "../tools/types.js";
+import { cellToSource, cellToSourceRegion } from "../tools/types.js";
 import { HELP_LINE_COUNT } from "../components/HelpScreen.js";
 import type { Tool, ToolContext } from "../tools/types.js";
 import type { ToolName } from "../state/store.js";
@@ -14,6 +14,11 @@ import type { EditLayer } from "../core/edit-layer.js";
 
 // Base edit layer saved when entering text mode, so live preview can re-rasterize cleanly
 let textBaseLayer: EditLayer | null = null;
+
+// Vim state machine
+let vimCount = ""; // numeric prefix accumulator
+let vimPending: "d" | "y" | "g" | null = null; // pending operator or g prefix
+let yankBuffer: { colors: (import("../core/image-buffer.js").RGB | null)[][] } | null = null;
 
 const tools: Record<string, Tool> = {
   brush: new BrushTool(),
@@ -71,6 +76,453 @@ function applyTool(toolName: ToolName) {
   }
 }
 
+function resetVimState() {
+  vimCount = "";
+  vimPending = null;
+}
+
+function getCount(): number {
+  return vimCount ? parseInt(vimCount) : 1;
+}
+
+function getGridSize(): { cols: number; rows: number } {
+  const s = useStore.getState();
+  if (s.cropRegion) return { cols: s.cropRegion.gridW, rows: s.cropRegion.gridH };
+  const ts = s.viewport?.getTermSize();
+  return { cols: ts?.w ?? 80, rows: ts?.h ?? 24 };
+}
+
+function pushUndo() {
+  const s = useStore.getState();
+  if (!s.editLayer) return;
+  undoStack.push({
+    editLayer: s.editLayer,
+    grayscale: s.grayscale,
+    palette: s.palette,
+    dither: s.dither,
+  });
+}
+
+/** Delete (clear edits) for a range of grid rows */
+function deleteRows(startRow: number, count: number) {
+  const store = useStore.getState();
+  if (!store.editLayer || !store.cropRegion) return;
+  const crop = store.cropRegion;
+  pushUndo();
+  const newLayer = store.editLayer.clone();
+  for (let r = startRow; r < startRow + count && r < crop.gridH; r++) {
+    for (let c = 0; c < crop.gridW; c++) {
+      const region = cellToSourceRegion(crop, c, r);
+      newLayer.clearRegion(region.x, region.y, region.w, region.h);
+    }
+  }
+  store.setEditLayer(newLayer);
+}
+
+/** Delete from cursor to end of row */
+function deleteToEndOfRow() {
+  const store = useStore.getState();
+  if (!store.editLayer || !store.cropRegion) return;
+  const crop = store.cropRegion;
+  pushUndo();
+  const newLayer = store.editLayer.clone();
+  for (let c = store.cursorCol; c < crop.gridW; c++) {
+    const region = cellToSourceRegion(crop, c, store.cursorRow);
+    newLayer.clearRegion(region.x, region.y, region.w, region.h);
+  }
+  store.setEditLayer(newLayer);
+}
+
+/** Delete single cell at cursor */
+function deleteCell() {
+  const store = useStore.getState();
+  if (!store.editLayer || !store.cropRegion) return;
+  pushUndo();
+  const newLayer = store.editLayer.clone();
+  const n = getCount();
+  for (let i = 0; i < n; i++) {
+    const col = Math.min(store.cursorCol + i, store.cropRegion.gridW - 1);
+    const region = cellToSourceRegion(store.cropRegion, col, store.cursorRow);
+    newLayer.clearRegion(region.x, region.y, region.w, region.h);
+  }
+  store.setEditLayer(newLayer);
+}
+
+/** Yank (copy) rows of pixel data from the composite image */
+function yankRows(startRow: number, count: number) {
+  const store = useStore.getState();
+  if (!store.image || !store.cropRegion) return;
+  const crop = store.cropRegion;
+  const rows: (import("../core/image-buffer.js").RGB | null)[][] = [];
+  for (let r = startRow; r < startRow + count && r < crop.gridH; r++) {
+    const row: (import("../core/image-buffer.js").RGB | null)[] = [];
+    for (let c = 0; c < crop.gridW; c++) {
+      const src = cellToSource(crop, c, r);
+      const editColor = store.editLayer?.getPixel(src.x, src.y);
+      if (editColor) {
+        row.push(editColor);
+      } else {
+        row.push(store.image.getPixel(
+          Math.min(src.x, store.image.width - 1),
+          Math.min(src.y, store.image.height - 1),
+        ));
+      }
+    }
+    rows.push(row);
+  }
+  yankBuffer = { colors: rows };
+  store.setMessage(`Yanked ${count} row${count > 1 ? "s" : ""}`);
+}
+
+/** Paste yanked rows at cursor position */
+function pasteYank() {
+  const store = useStore.getState();
+  if (!yankBuffer || !store.editLayer || !store.cropRegion) return;
+  pushUndo();
+  const crop = store.cropRegion;
+  const newLayer = store.editLayer.clone();
+  for (let ri = 0; ri < yankBuffer.colors.length; ri++) {
+    const targetRow = store.cursorRow + ri;
+    if (targetRow >= crop.gridH) break;
+    const rowColors = yankBuffer.colors[ri];
+    for (let c = 0; c < rowColors.length && c < crop.gridW; c++) {
+      const color = rowColors[c];
+      if (color) {
+        const region = cellToSourceRegion(crop, c, targetRow);
+        newLayer.paintRegion(region.x, region.y, region.w, region.h, color);
+      }
+    }
+  }
+  store.setEditLayer(newLayer);
+  store.setMessage(`Pasted ${yankBuffer.colors.length} row${yankBuffer.colors.length > 1 ? "s" : ""}`);
+}
+
+function handleNormalMode(input: string, key: any, store: ReturnType<typeof useStore.getState>) {
+  const grid = getGridSize();
+
+  // --- g prefix ---
+  if (vimPending === "g") {
+    if (input === "g") {
+      // gg — go to top-left
+      useStore.setState({ cursorCol: 0, cursorRow: 0 });
+    }
+    resetVimState();
+    return;
+  }
+
+  // --- d operator pending ---
+  if (vimPending === "d") {
+    const n = getCount();
+    if (input === "d") {
+      // dd — delete N rows
+      deleteRows(store.cursorRow, n);
+      store.setMessage(`Deleted ${n} row${n > 1 ? "s" : ""}`);
+    } else if (input === "G") {
+      // dG — delete from cursor row to bottom
+      const count = grid.rows - store.cursorRow;
+      deleteRows(store.cursorRow, count);
+      store.setMessage(`Deleted ${count} rows to end`);
+    } else if (input === "g") {
+      // Wait for second g (dgg — delete from top to cursor row)
+      vimPending = null;
+      // Handle dgg inline
+      const count = store.cursorRow + 1;
+      deleteRows(0, count);
+      useStore.setState({ cursorRow: 0 });
+      store.setMessage(`Deleted ${count} rows from top`);
+    }
+    resetVimState();
+    return;
+  }
+
+  // --- y operator pending ---
+  if (vimPending === "y") {
+    const n = getCount();
+    if (input === "y") {
+      // yy — yank N rows
+      yankRows(store.cursorRow, n);
+    }
+    resetVimState();
+    return;
+  }
+
+  // --- Accumulate count digits ---
+  // Digits 1-9 start count, 0 continues count (if count already started)
+  if (input >= "1" && input <= "9" && !vimPending) {
+    vimCount += input;
+    return;
+  }
+  if (input === "0" && vimCount.length > 0 && !vimPending) {
+    vimCount += input;
+    return;
+  }
+
+  // --- Movement with count ---
+  const dir = getDirection(input, key);
+  if (dir) {
+    const n = getCount();
+    for (let i = 0; i < n; i++) store.moveCursor(dir.dx, dir.dy);
+    resetVimState();
+    return;
+  }
+
+  // --- Vim motions ---
+
+  // G — go to bottom
+  if (input === "G" && !key.shift) {
+    // Actually G is always shift+g, but ink sends capital G
+    useStore.setState({ cursorRow: grid.rows - 1 });
+    resetVimState();
+    return;
+  }
+  // g prefix (gg, etc.)
+  if (input === "g" && !vimPending) {
+    vimPending = "g";
+    return;
+  }
+
+  // 0 — start of row (when not accumulating count)
+  if (input === "0" && !vimCount) {
+    useStore.setState({ cursorCol: 0 });
+    resetVimState();
+    return;
+  }
+  // ^ — start of row
+  if (input === "^") {
+    useStore.setState({ cursorCol: 0 });
+    resetVimState();
+    return;
+  }
+  // $ — end of row
+  if (input === "$") {
+    useStore.setState({ cursorCol: grid.cols - 1 });
+    resetVimState();
+    return;
+  }
+
+  // w — next color boundary (forward)
+  if (input === "w") {
+    jumpToColorBoundary(1, getCount());
+    resetVimState();
+    return;
+  }
+  // b — prev color boundary (backward)  — but also brush tool...
+  // We'll keep b as brush tool since it's more useful. Users can use B for back.
+  // Actually let's use W/B for word motions to avoid conflict with brush
+  if (input === "W") {
+    jumpToColorBoundary(1, getCount());
+    resetVimState();
+    return;
+  }
+  if (input === "B") {
+    jumpToColorBoundary(-1, getCount());
+    resetVimState();
+    return;
+  }
+
+  // Ctrl+D / Ctrl+U — half page
+  if (key.ctrl && input === "d") {
+    const half = Math.floor(grid.rows / 2);
+    for (let i = 0; i < half; i++) store.moveCursor(0, 1);
+    resetVimState();
+    return;
+  }
+  if (key.ctrl && input === "u") {
+    const half = Math.floor(grid.rows / 2);
+    for (let i = 0; i < half; i++) store.moveCursor(0, -1);
+    resetVimState();
+    return;
+  }
+
+  // --- Operators ---
+
+  // d — start delete operator
+  if (input === "d" && !vimPending) {
+    vimPending = "d";
+    return;
+  }
+  // D — delete to end of row (like vim)
+  if (input === "D") {
+    deleteToEndOfRow();
+    store.setMessage("Deleted to end of row");
+    resetVimState();
+    return;
+  }
+  // x — delete cell(s) at cursor
+  if (input === "x") {
+    deleteCell();
+    resetVimState();
+    return;
+  }
+
+  // y — start yank operator
+  if (input === "y" && !vimPending) {
+    vimPending = "y";
+    return;
+  }
+  // p — paste
+  if (input === "p") {
+    pasteYank();
+    resetVimState();
+    return;
+  }
+
+  // --- Everything else (non-vim) ---
+  resetVimState();
+
+  // Tool selection (only non-conflicting keys now)
+  const toolMap: Record<string, ToolName> = {
+    b: "brush", e: "eraser", f: "fill",
+  };
+  if (toolMap[input]) {
+    store.setTool(toolMap[input]);
+    return;
+  }
+
+  // Eyedropper — use 'c' since 'd' is now delete operator
+  // Actually let's keep both: 'd' without a following 'd'/'G' already fell through
+  // But 'd' sets vimPending, so we need a different key. Let's use 'c' for color picker.
+  if (input === "c") {
+    store.setTool("eyedropper");
+    return;
+  }
+
+  // Enter paint mode (i only — p is now paste)
+  if (input === "i") {
+    store.setMode("paint");
+    return;
+  }
+
+  // Enter text mode
+  if (input === "t") {
+    textBaseLayer = store.editLayer?.clone() ?? null;
+    useStore.setState({
+      mode: "text",
+      textBuffer: "",
+      textStartCol: store.cursorCol,
+      textStartRow: store.cursorRow,
+    });
+    store.setMessage("-- TEXT -- (type to insert, Esc to finish)");
+    return;
+  }
+
+  // Command mode
+  if (input === ":") {
+    store.setMode("command");
+    return;
+  }
+
+  // Zoom
+  if (input === "+" || input === "=") {
+    if (store.viewport) {
+      const cur = store.viewport.getZoom();
+      const step = cur < 1 ? 0.25 : 1;
+      store.viewport.zoomAt(store.cursorCol, store.cursorRow, cur + step);
+      store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
+    }
+    return;
+  }
+  if (input === "-") {
+    if (store.viewport) {
+      const cur = store.viewport.getZoom();
+      const step = cur <= 1 ? 0.25 : 1;
+      store.viewport.zoomAt(store.cursorCol, store.cursorRow, cur - step);
+      store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
+    }
+    return;
+  }
+
+  // Undo
+  if (input === "u") {
+    if (store.editLayer) {
+      const prev = undoStack.undo({
+        editLayer: store.editLayer,
+        grayscale: store.grayscale,
+        palette: store.palette,
+        dither: store.dither,
+      });
+      if (prev) {
+        store.setEditLayer(prev.editLayer);
+        useStore.setState({
+          grayscale: prev.grayscale,
+          palette: prev.palette,
+          dither: prev.dither,
+        });
+      }
+    }
+    return;
+  }
+
+  // Redo (Ctrl+R)
+  if (key.ctrl && input === "r") {
+    if (store.editLayer) {
+      const next = undoStack.redo({
+        editLayer: store.editLayer,
+        grayscale: store.grayscale,
+        palette: store.palette,
+        dither: store.dither,
+      });
+      if (next) {
+        store.setEditLayer(next.editLayer);
+        useStore.setState({
+          grayscale: next.grayscale,
+          palette: next.palette,
+          dither: next.dither,
+        });
+      }
+    }
+    return;
+  }
+
+  // Quick palette: shift+number keys for 16 colors
+  // !@#$%^&*() = colors 1-10, then F1-F6 style: use `:color N` for 11-16
+  const shiftPaletteMap: Record<string, number> = {
+    "!": 0, "@": 1, "#": 2, "$": 3, "%": 4, "^": 5, "&": 6, "*": 7,
+    "(": 8, ")": 9,
+  };
+  if (input in shiftPaletteMap) {
+    store.setFgColor(MS_PAINT_PALETTE[shiftPaletteMap[input]]);
+    store.setMessage(`Color ${shiftPaletteMap[input] + 1}`);
+    return;
+  }
+
+  // Apply tool at cursor (space/enter)
+  if (input === " " || key.return) {
+    applyTool(store.tool);
+    return;
+  }
+}
+
+/** Jump cursor to the next color boundary in the given direction */
+function jumpToColorBoundary(direction: 1 | -1, count: number) {
+  const store = useStore.getState();
+  if (!store.image || !store.cropRegion) return;
+  const crop = store.cropRegion;
+  let col = store.cursorCol;
+  const row = store.cursorRow;
+
+  function getColorAt(c: number): string {
+    const src = cellToSource(crop, c, row);
+    const edit = store.editLayer?.getPixel(src.x, src.y);
+    const px = edit ?? store.image!.getPixel(
+      Math.min(src.x, store.image!.width - 1),
+      Math.min(src.y, store.image!.height - 1),
+    );
+    return `${px.r},${px.g},${px.b}`;
+  }
+
+  for (let n = 0; n < count; n++) {
+    const startColor = getColorAt(col);
+    // Skip past current color run
+    while (col + direction >= 0 && col + direction < crop.gridW) {
+      col += direction;
+      if (getColorAt(col) !== startColor) break;
+    }
+  }
+
+  useStore.setState({ cursorCol: Math.max(0, Math.min(col, crop.gridW - 1)) });
+}
+
 export function useInputHandler() {
   const mode = useStore((s) => s.mode);
 
@@ -123,127 +575,8 @@ export function useInputHandler() {
     }
 
     if (mode === "normal") {
-      // Movement
-      const dir = getDirection(input, key);
-      if (dir) {
-        store.moveCursor(dir.dx, dir.dy);
-        return;
-      }
-
-      // Tool selection
-      const toolMap: Record<string, ToolName> = {
-        b: "brush", e: "eraser", f: "fill", d: "eyedropper",
-      };
-      if (toolMap[input]) {
-        store.setTool(toolMap[input]);
-        return;
-      }
-
-      // Enter paint mode
-      if (input === "i" || input === "p") {
-        store.setMode("paint");
-        return;
-      }
-
-      // Enter text mode
-      if (input === "t") {
-        textBaseLayer = store.editLayer?.clone() ?? null;
-        useStore.setState({
-          mode: "text",
-          textBuffer: "",
-          textStartCol: store.cursorCol,
-          textStartRow: store.cursorRow,
-        });
-        store.setMessage("-- TEXT -- (type to insert, Esc to finish)");
-        return;
-      }
-
-      // Command mode
-      if (input === ":") {
-        store.setMode("command");
-        return;
-      }
-
-      // Zoom (clone viewport so zustand detects the change)
-      if (input === "+" || input === "=") {
-        if (store.viewport) {
-          const cur = store.viewport.getZoom();
-          const step = cur < 1 ? 0.25 : 1;
-          store.viewport.zoomAt(store.cursorCol, store.cursorRow, cur + step);
-          store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
-        }
-        return;
-      }
-      if (input === "-") {
-        if (store.viewport) {
-          const cur = store.viewport.getZoom();
-          const step = cur <= 1 ? 0.25 : 1;
-          store.viewport.zoomAt(store.cursorCol, store.cursorRow, cur - step);
-          store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
-        }
-        return;
-      }
-
-      // Undo
-      if (input === "u") {
-        if (store.editLayer) {
-          const prev = undoStack.undo({
-            editLayer: store.editLayer,
-            grayscale: store.grayscale,
-            palette: store.palette,
-            dither: store.dither,
-          });
-          if (prev) {
-            store.setEditLayer(prev.editLayer);
-            useStore.setState({
-              grayscale: prev.grayscale,
-              palette: prev.palette,
-              dither: prev.dither,
-            });
-          }
-        }
-        return;
-      }
-
-      // Redo (Ctrl+R)
-      if (key.ctrl && input === "r") {
-        if (store.editLayer) {
-          const next = undoStack.redo({
-            editLayer: store.editLayer,
-            grayscale: store.grayscale,
-            palette: store.palette,
-            dither: store.dither,
-          });
-          if (next) {
-            store.setEditLayer(next.editLayer);
-            useStore.setState({
-              grayscale: next.grayscale,
-              palette: next.palette,
-              dither: next.dither,
-            });
-          }
-        }
-        return;
-      }
-
-      // Quick palette: 1-9, 0, then !@#$%^ for all 16 colors
-      const paletteKeyMap: Record<string, number> = {
-        "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6, "8": 7, "9": 8,
-        "0": 9, "!": 10, "@": 11, "#": 12, "$": 13, "%": 14, "^": 15,
-      };
-      if (input in paletteKeyMap) {
-        const idx = paletteKeyMap[input];
-        if (MS_PAINT_PALETTE[idx]) {
-          store.setFgColor(MS_PAINT_PALETTE[idx]);
-        }
-        return;
-      }
-
-      // Apply tool at cursor (space/enter)
-      if (input === " " || key.return) {
-        applyTool(store.tool);
-        return;
-      }
+      handleNormalMode(input, key, store);
+      return;
     }
 
     if (mode === "paint") {

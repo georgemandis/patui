@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import { useStore, MS_PAINT_PALETTE } from "../state/store.js";
 
-const PALETTE_KEYS = ["1","2","3","4","5","6","7","8","9","0","!","@","#","$","%","^"];
+const PALETTE_KEYS = ["!","@","#","$","%","^","&","*","(",")","·","·","·","·","·","·"];
 
 export function ColorPalette() {
   const fgColor = useStore((s) => s.fgColor);

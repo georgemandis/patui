@@ -1,5 +1,5 @@
 import { parseCommand } from "./parser.js";
-import { useStore } from "../state/store.js";
+import { useStore, MS_PAINT_PALETTE } from "../state/store.js";
 import { ImageBuffer } from "../core/image-buffer.js";
 import { EditLayer } from "../core/edit-layer.js";
 import { Viewport } from "../core/viewport.js";
@@ -188,6 +188,18 @@ export async function executeCommand(input: string) {
       useStore.setState({ grayscale: false, palette: null, dither: false });
       store.setMessage("Filters reset");
       break;
+
+    case "color":
+    case "c": {
+      const n = parseInt(args[0]);
+      if (isNaN(n) || n < 1 || n > 16) {
+        store.setMessage("Usage: :color 1-16");
+        break;
+      }
+      store.setFgColor(MS_PAINT_PALETTE[n - 1]);
+      store.setMessage(`Color ${n}`);
+      break;
+    }
 
     case "help":
       useStore.setState({ mode: "help", helpScroll: 0 });
