@@ -1,10 +1,10 @@
 {
-  "name": "tui-paint",
+  "name": "patui",
   "module": "index.ts",
   "type": "module",
   "private": true,
   "bin": {
-    "tui-paint": "./src/index.tsx"
+    "patui": "./src/index.tsx"
   },
   "scripts": {
     "start": "bun src/index.tsx"
