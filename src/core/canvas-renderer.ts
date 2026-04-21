@@ -17,23 +17,31 @@ export class CanvasRenderer {
   private lastCursorCol: number = -1;
   private lastCursorRow: number = -1;
 
+  private lastBrushSize: number = 1;
+
   /** Render a full grid, only writing cells that changed from last frame */
-  render(grid: RGB[][], cursorCol?: number, cursorRow?: number, cursorVisible: boolean = true) {
+  render(grid: RGB[][], cursorCol?: number, cursorRow?: number, cursorVisible: boolean = true, brushSize: number = 1) {
     let output = "";
+    const half = Math.floor(brushSize / 2);
 
     for (let row = 0; row < Math.min(grid.length, this.height); row++) {
       for (let col = 0; col < Math.min(grid[row].length, this.width); col++) {
         const pixel = grid[row][col];
         const prev = this.lastFrame?.[row]?.[col];
 
-        const isCursor = col === cursorCol && row === cursorRow;
-        const wasCursor = col === this.lastCursorCol && row === this.lastCursorRow;
-        const changed = !prev || prev.r !== pixel.r || prev.g !== pixel.g || prev.b !== pixel.b || isCursor || wasCursor;
+        const inCursor = cursorCol !== undefined && cursorRow !== undefined
+          && col >= cursorCol - half && col < cursorCol - half + brushSize
+          && row >= cursorRow - half && row < cursorRow - half + brushSize;
+        const inLastCursor = col >= this.lastCursorCol - Math.floor(this.lastBrushSize / 2)
+          && col < this.lastCursorCol - Math.floor(this.lastBrushSize / 2) + this.lastBrushSize
+          && row >= this.lastCursorRow - Math.floor(this.lastBrushSize / 2)
+          && row < this.lastCursorRow - Math.floor(this.lastBrushSize / 2) + this.lastBrushSize;
+        const changed = !prev || prev.r !== pixel.r || prev.g !== pixel.g || prev.b !== pixel.b || inCursor || inLastCursor;
 
         if (changed) {
           // Move cursor to position
           output += `\x1b[${this.offsetY + row + 1};${this.offsetX + col + 1}H`;
-          if (isCursor && cursorVisible) {
+          if (inCursor && cursorVisible) {
             // Rainbow cursor — cycle hue, render as ▒ with bright FG over pixel BG
             const hue = (Date.now() / 4) % 360;
             const rgb = hslToRgb(hue, 100, 60);
@@ -47,6 +55,7 @@ export class CanvasRenderer {
 
     this.lastCursorCol = cursorCol ?? -1;
     this.lastCursorRow = cursorRow ?? -1;
+    this.lastBrushSize = brushSize;
 
     if (output) {
       process.stdout.write(output);

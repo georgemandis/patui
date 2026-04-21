@@ -11,6 +11,7 @@ export function Canvas() {
   const viewport = useStore((s) => s.viewport);
   const cursorCol = useStore((s) => s.cursorCol);
   const cursorRow = useStore((s) => s.cursorRow);
+  const brushSize = useStore((s) => s.brushSize);
   const rendererRef = useRef<CanvasRenderer | null>(null);
   const [cursorTick, setCursorTick] = useState(0);
 
@@ -42,8 +43,8 @@ export function Canvas() {
     rendererRef.current.invalidate();
 
     const grid = Sampler.sample(image, viewport, editLayer);
-    rendererRef.current.render(grid, cursorCol, cursorRow, true);
-  }, [image, editLayer, viewport, cursorCol, cursorRow, cursorTick]);
+    rendererRef.current.render(grid, cursorCol, cursorRow, true, brushSize);
+  }, [image, editLayer, viewport, cursorCol, cursorRow, cursorTick, brushSize]);
 
   if (!image) {
     return (
