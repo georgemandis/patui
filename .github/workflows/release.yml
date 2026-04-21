@@ -41,21 +41,20 @@ jobs:
 
       - name: Compile standalone binary (unix)
         if: runner.os != 'Windows'
-        run: bun build --compile src/index.tsx --outfile dist/patui --external sharp
+        run: bun build --compile src/index.tsx --outfile dist/patui
 
       - name: Compile standalone binary (windows)
         if: runner.os == 'Windows'
-        run: bun build --compile src/index.tsx --outfile dist/patui.exe --external sharp
+        run: bun build --compile src/index.tsx --outfile dist/patui.exe
 
       - name: Package archive (unix)
         if: runner.os != 'Windows'
         run: |
           VERSION="${{ github.ref_name }}"
           ARCHIVE_DIR="patui-${VERSION}-${{ matrix.archive_suffix }}"
-          mkdir -p "${ARCHIVE_DIR}/sharp"
+          mkdir -p "${ARCHIVE_DIR}/node_modules/@img"
           cp dist/patui "${ARCHIVE_DIR}/"
-          cp -r node_modules/sharp "${ARCHIVE_DIR}/sharp/sharp"
-          cp -r node_modules/@img "${ARCHIVE_DIR}/sharp/@img"
+          cp -r node_modules/@img/sharp-* "${ARCHIVE_DIR}/node_modules/@img/"
           tar czf "${ARCHIVE_DIR}.tar.gz" "${ARCHIVE_DIR}"
           echo "ARCHIVE=${ARCHIVE_DIR}.tar.gz" >> "$GITHUB_ENV"
 
@@ -65,10 +64,9 @@ jobs:
         run: |
           VERSION="${{ github.ref_name }}"
           ARCHIVE_DIR="patui-${VERSION}-${{ matrix.archive_suffix }}"
-          mkdir -p "${ARCHIVE_DIR}/sharp"
+          mkdir -p "${ARCHIVE_DIR}/node_modules/@img"
           cp dist/patui.exe "${ARCHIVE_DIR}/"
-          cp -r node_modules/sharp "${ARCHIVE_DIR}/sharp/sharp"
-          cp -r node_modules/@img "${ARCHIVE_DIR}/sharp/@img"
+          cp -r node_modules/@img/sharp-* "${ARCHIVE_DIR}/node_modules/@img/"
           7z a "${ARCHIVE_DIR}.zip" "${ARCHIVE_DIR}"
           echo "ARCHIVE=${ARCHIVE_DIR}.zip" >> "$GITHUB_ENV"
 
