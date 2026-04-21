@@ -20,6 +20,7 @@ export function StatusBar() {
   const cursorCol = useStore((s) => s.cursorCol);
   const cursorRow = useStore((s) => s.cursorRow);
   const cropRegion = useStore((s) => s.cropRegion);
+  const vimDisplay = useStore((s) => s.vimDisplay);
 
   const zoom = viewport?.getZoom() ?? 1;
 
@@ -48,6 +49,7 @@ export function StatusBar() {
           <Text color="gray">{filename ?? "[no file]"}</Text>
         </>
       )}
+      {vimDisplay ? <Text color="yellow" bold>{vimDisplay}</Text> : null}
     </Box>
   );
 }

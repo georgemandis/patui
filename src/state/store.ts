@@ -28,6 +28,8 @@ export interface AppState {
   cropRegion: { x: number; y: number; w: number; h: number; gridW: number; gridH: number } | null;
   // Help scroll offset
   helpScroll: number;
+  // Vim pending command display (e.g. "5d", "yy")
+  vimDisplay: string;
   // Text mode state
   textBuffer: string;
   textStartCol: number;
@@ -84,6 +86,7 @@ export const useStore = create<AppState>((set) => ({
   message: null,
   cropRegion: null,
   helpScroll: 0,
+  vimDisplay: "",
   textBuffer: "",
   textStartCol: 0,
   textStartRow: 0,

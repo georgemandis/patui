@@ -170,14 +170,25 @@ export async function executeCommand(input: string) {
 
     case "goto":
     case "g": {
-      const x = parseInt(args[0]);
-      const y = parseInt(args[1]);
-      if (isNaN(x) || isNaN(y)) {
-        store.setMessage("Usage: :goto <x> <y>  (source pixel coordinates)");
+      if (!args[0] || !args[1]) {
+        store.setMessage("Usage: :goto <x> <y>  (pixels or percentages like 50%)");
         break;
       }
       if (!store.image || !store.viewport) {
         store.setMessage("No image loaded");
+        break;
+      }
+      // Parse value — supports "50%" or plain pixel number
+      const parseCoord = (val: string, max: number): number => {
+        if (val.endsWith("%")) {
+          return Math.round((parseFloat(val) / 100) * max);
+        }
+        return parseInt(val);
+      };
+      const x = parseCoord(args[0], store.image.width);
+      const y = parseCoord(args[1], store.image.height);
+      if (isNaN(x) || isNaN(y)) {
+        store.setMessage("Usage: :goto <x> <y>  (pixels or percentages like 50%)");
         break;
       }
       // Clamp to image bounds

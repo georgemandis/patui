@@ -1,4 +1,4 @@
-# TUI Paint
+# PaTUI
 
 A terminal-based image editor with Vim-style modal controls. Load images (PNG, JPEG, or URLs) and render them as colored block characters in your terminal. Paint, erase, fill, type text, apply retro filters, and export your work as PNG, ANSI art, or plain text.
 
@@ -109,7 +109,7 @@ The bottom bar shows all 16 colors. Active color is highlighted. Eyedropper pick
 | `:set fg N` | Set foreground to palette color 1-16 |
 | `:set bg N` | Set background to palette color 1-16 |
 | `:color N` | Select foreground palette color 1-16 |
-| `:goto X Y` or `:g X Y` | Jump cursor to source pixel coordinate |
+| `:goto X Y` or `:g X Y` | Jump to source pixel (supports `50%` for percentages) |
 | `:gray` | Toggle grayscale filter |
 | `:palette <name>` | Limit colors (`cga`, `gameboy`, `websafe`) |
 | `:dither` | Toggle Floyd-Steinberg dithering |
@@ -138,7 +138,7 @@ Filters apply live on the canvas and are included in exports. All filter changes
 
 ```
 ┌─────────────────────────────────────────────┐
-│ File  Edit  View  Image  Help               │
+│ PaTUI                                        │
 ├────┬────────────────────────────────────────┤
 │ [B]│                                        │
 │ [E]│                                        │

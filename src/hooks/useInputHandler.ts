@@ -79,6 +79,11 @@ function applyTool(toolName: ToolName) {
 function resetVimState() {
   vimCount = "";
   vimPending = null;
+  useStore.setState({ vimDisplay: "" });
+}
+
+function updateVimDisplay() {
+  useStore.setState({ vimDisplay: `${vimCount}${vimPending ?? ""}` });
 }
 
 function getCount(): number {
@@ -250,10 +255,12 @@ function handleNormalMode(input: string, key: any, store: ReturnType<typeof useS
   // Digits 1-9 start count, 0 continues count (if count already started)
   if (input >= "1" && input <= "9" && !vimPending) {
     vimCount += input;
+    updateVimDisplay();
     return;
   }
   if (input === "0" && vimCount.length > 0 && !vimPending) {
     vimCount += input;
+    updateVimDisplay();
     return;
   }
 
@@ -278,6 +285,7 @@ function handleNormalMode(input: string, key: any, store: ReturnType<typeof useS
   // g prefix (gg, etc.)
   if (input === "g" && !vimPending) {
     vimPending = "g";
+    updateVimDisplay();
     return;
   }
 
@@ -339,6 +347,7 @@ function handleNormalMode(input: string, key: any, store: ReturnType<typeof useS
   // d — start delete operator
   if (input === "d" && !vimPending) {
     vimPending = "d";
+    updateVimDisplay();
     return;
   }
   // D — delete to end of row (like vim)
@@ -358,6 +367,7 @@ function handleNormalMode(input: string, key: any, store: ReturnType<typeof useS
   // y — start yank operator
   if (input === "y" && !vimPending) {
     vimPending = "y";
+    updateVimDisplay();
     return;
   }
   // p — paste

@@ -2,7 +2,7 @@ import { Box, Text, useStdout } from "ink";
 import { useStore } from "../state/store.js";
 
 const HELP_LINES = `
-  TUI Paint — Help                                (Esc/q to close, j/k to scroll)
+  PaTUI — Help                                (Esc/q to close, j/k to scroll)
   ═══════════════
 
   MODES
@@ -119,7 +119,7 @@ export function HelpScreen() {
         const isRule = trimmed.length > 0 && /^[─═]+$/.test(trimmed);
         const isHeader = trimmed.length > 0 && !isRule
           && i > 0 && !!visible[i + 1]?.trim().match(/^[─═]+$/);
-        const isTitle = line.includes("TUI Paint");
+        const isTitle = line.includes("PaTUI");
 
         return (
           <Text
