@@ -14,7 +14,10 @@ export function CommandLine() {
     if (key.return) {
       executeCommand(commandText);
       setCommandText("");
-      setMode("normal");
+      // Only reset to normal if the command didn't change the mode (e.g. :help)
+      if (useStore.getState().mode === "command") {
+        setMode("normal");
+      }
     } else if (key.escape) {
       setCommandText("");
       setMode("normal");

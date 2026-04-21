@@ -49,10 +49,12 @@ export async function executeCommand(input: string) {
     }
 
     case "new": {
-      const w = parseInt(args[0]) || ((process.stdout.columns || 80) - 5);
-      const h = parseInt(args[1]) || ((process.stdout.rows || 24) - 4);
-      const image = ImageBuffer.blank(w, h, store.bgColor);
-      const viewport = new Viewport(w, h, Math.min(w, (process.stdout.columns || 80) - 5), Math.min(h, (process.stdout.rows || 24) - 4));
+      const termCols = (process.stdout.columns || 80) - 5;
+      const termRows = (process.stdout.rows || 24) - 4;
+      const w = parseInt(args[0]) || termCols;
+      const h = parseInt(args[1]) || termRows * 2;
+      const image = await ImageBuffer.blankAsync(w, h, store.bgColor);
+      const viewport = new Viewport(w, h, Math.min(w, termCols), Math.min(h, termRows));
       const editLayer = new EditLayer(w, h);
       undoStack.clear();
       store.setImage(image, null);
@@ -125,11 +127,17 @@ export async function executeCommand(input: string) {
     }
 
     case "gray":
+      if (store.editLayer) {
+        undoStack.push({ editLayer: store.editLayer, grayscale: store.grayscale, palette: store.palette, dither: store.dither });
+      }
       useStore.setState((s) => ({ grayscale: !s.grayscale }));
       store.setMessage(`Grayscale: ${!store.grayscale ? "on" : "off"}`);
       break;
 
     case "palette": {
+      if (store.editLayer) {
+        undoStack.push({ editLayer: store.editLayer, grayscale: store.grayscale, palette: store.palette, dither: store.dither });
+      }
       const name = args[0] || null;
       useStore.setState({ palette: name });
       store.setMessage(name ? `Palette: ${name}` : "Palette: true color");
@@ -137,17 +145,52 @@ export async function executeCommand(input: string) {
     }
 
     case "dither":
+      if (store.editLayer) {
+        undoStack.push({ editLayer: store.editLayer, grayscale: store.grayscale, palette: store.palette, dither: store.dither });
+      }
       useStore.setState((s) => ({ dither: !s.dither }));
       store.setMessage(`Dither: ${!store.dither ? "on" : "off"}`);
       break;
 
+    case "goto":
+    case "g": {
+      const x = parseInt(args[0]);
+      const y = parseInt(args[1]);
+      if (isNaN(x) || isNaN(y)) {
+        store.setMessage("Usage: :goto <x> <y>  (source pixel coordinates)");
+        break;
+      }
+      if (!store.image || !store.viewport) {
+        store.setMessage("No image loaded");
+        break;
+      }
+      // Clamp to image bounds
+      const px = Math.max(0, Math.min(x, store.image.width - 1));
+      const py = Math.max(0, Math.min(y, store.image.height - 1));
+      // Map source pixel to grid cursor position using current crop
+      const crop = store.cropRegion;
+      if (crop) {
+        const col = Math.round(((px - crop.x) / crop.w) * crop.gridW);
+        const row = Math.round(((py - crop.y) / crop.h) * crop.gridH);
+        useStore.setState({
+          cursorCol: Math.max(0, Math.min(col, crop.gridW - 1)),
+          cursorRow: Math.max(0, Math.min(row, crop.gridH - 1)),
+        });
+      }
+      store.setMessage(`Goto ${px},${py}`);
+      break;
+    }
+
     case "reset":
+      if (store.editLayer) {
+        undoStack.push({ editLayer: store.editLayer, grayscale: store.grayscale, palette: store.palette, dither: store.dither });
+      }
       useStore.setState({ grayscale: false, palette: null, dither: false });
       store.setMessage("Filters reset");
       break;
 
     case "help":
-      store.setMessage(":o :w :wc :new :q :set :gray :palette :dither :help");
+      useStore.setState({ mode: "help", helpScroll: 0 });
       break;
 
     default:

@@ -1,153 +1,104 @@
-# TUI Paint — MS Paint meets Vim, in your terminal
+# TUI Paint
 
-A terminal-based MS Paint clone with Vim-style modal controls, bringing pixel art creation to your command line. Load real images and render them as hilariously low-resolution "chonky pixels" (█ blocks), with a zoom mechanic that transforms the Mona Lisa into a muddy brown square and back into recognizable ASCII art.
-
-## What it does
-
-TUI Paint loads images (PNG, JPEG, or URLs) and renders them as large ASCII blocks in your terminal. The zoom feature is the star: zoom out to see your entire image as one giant pixelated blob, zoom in to explore intricate ASCII detail. Use Vim-style modal editing to paint, erase, fill, sample colors, and export your work in multiple formats—PNG, ANSI, or plain text.
+A terminal-based image editor with Vim-style modal controls. Load images (PNG, JPEG, or URLs) and render them as colored block characters in your terminal. Paint, erase, fill, type text, apply retro filters, and export your work as PNG, ANSI art, or plain text.
 
 ## Installation
 
 ```bash
-# Clone and install dependencies
 bun install
-
-# Run with an image
-bun src/index.tsx [image-path-or-url]
 ```
 
 ## Usage
 
 ```bash
 # Load a local image
-tui-paint mona.png
+bun src/index.tsx mona.png
 
 # Load from URL
-tui-paint https://example.com/image.png
+bun src/index.tsx https://example.com/image.png
 
-# Start with blank canvas
-tui-paint
-
-# Specify canvas dimensions
-tui-paint --size 80x40
-tui-paint image.png --size 120x60
+# Start with blank canvas (sized to your terminal)
+bun src/index.tsx
 ```
 
-## Controls
+## Modes
 
-### Modes
+| Mode | Enter | Exit | Behavior |
+|------|-------|------|----------|
+| Normal | Esc | — | Move cursor, switch tools, zoom, undo/redo |
+| Paint | `i` or `p` | Esc | Movement applies the active tool continuously |
+| Text | `t` | Esc (commits) | Type characters rendered onto the image |
+| Command | `:` | Esc or Enter | Text commands for file I/O, filters, settings |
 
-| Mode | Enter via | Behavior |
-|------|-----------|----------|
-| Normal | Esc | Move cursor, switch tools, zoom, access commands |
-| Paint | i or p | Cursor movement applies active tool |
-| Visual | v | Rectangle selection for bulk operations |
-| Command | : | Text command input for actions and filters |
-
-### Normal Mode Keys
+## Normal Mode Keys
 
 | Key | Action |
 |-----|--------|
-| h/j/k/l or arrows | Move cursor up/down/left/right |
-| b | Select brush tool |
-| e | Select eraser tool |
-| f | Select fill (bucket) tool |
-| d | Select eyedropper (color picker) tool |
-| + or = | Zoom in |
-| - or _ | Zoom out |
+| h/j/k/l or arrows | Move cursor |
+| b | Brush tool |
+| e | Eraser tool |
+| f | Fill (bucket) tool |
+| d | Eyedropper (color picker) tool |
+| t | Enter Text mode |
 | i or p | Enter Paint mode |
-| v | Enter Visual mode |
 | : | Enter Command mode |
+| + / = | Zoom in |
+| - | Zoom out |
 | u | Undo |
 | Ctrl+R | Redo |
-| 1-9 | Quick select palette color |
-| Space or Enter | Apply tool at cursor position |
+| 1-9, 0 | Select palette color 1-10 |
+| ! @ # $ % ^ | Select palette color 11-16 |
+| Space or Enter | Apply tool at cursor |
 
-### Commands (enter with `:`)
+## Text Mode
+
+Press `t` to enter text mode. Characters you type are rasterized onto the source image at the cursor position using the current foreground color.
+
+- Font size scales with brush size (`:set brush 5` for larger text)
+- Backspace removes the last character
+- Enter commits the current line and moves the cursor down
+- Escape commits and returns to Normal mode
+
+## Commands
 
 | Command | Action |
 |---------|--------|
-| `:o [file-or-url]` | Open image file or URL |
-| `:new [W H]` | Create new blank canvas (dimensions optional) |
-| `:w [file.png/.ans/.txt]` | Export canvas to file |
-| `:wc` | Copy ANSI-colored version to clipboard |
-| `:wq` | Export PNG and quit |
-| `:q` | Quit |
-| `:q!` | Quit without saving |
-| `:set zoom N` | Set zoom level to N |
-| `:set brush N` | Set brush size to N pixels |
+| `:o <file-or-url>` | Open image file or URL |
+| `:new [W H]` | New blank canvas (defaults to terminal size) |
+| `:w <file>` | Export (`.png`, `.jpg`, `.ans`, `.txt`) |
+| `:wc` | Copy ANSI art to clipboard |
+| `:wq [file]` | Export PNG and quit |
+| `:q` or `:q!` | Quit |
+| `:set zoom N` | Set zoom level |
+| `:set brush N` | Set brush size |
+| `:goto X Y` or `:g X Y` | Jump cursor to source pixel coordinate |
 | `:gray` | Toggle grayscale filter |
-| `:palette cga\|gameboy\|websafe` | Limit colors to palette |
+| `:palette <name>` | Limit colors (`cga`, `gameboy`, `websafe`) |
 | `:dither` | Toggle Floyd-Steinberg dithering |
-| `:reset` | Remove all filters and return to original |
-| `:help` | Show in-app help |
-
-## Keyboard Shortcuts
-
-- **Paint mode + Space**: Apply tool to single cell
-- **Paint mode + drag**: Apply tool across multiple cells
-- **Visual mode + selection**: Outline shows selected rectangle
-- **Undo/Redo**: Works across undo history within session
-
-## Export Formats
-
-### PNG
-Export your final work as a standard PNG image:
-```
-:w output.png
-```
-
-### ANSI Text
-Create a colored text file with ANSI escape codes, perfect for terminal display or scripts:
-```
-:w output.ans
-```
-
-### Plain Text
-Export as pure ASCII without colors:
-```
-:w output.txt
-```
-
-### Clipboard
-Copy the ANSI-colored version to your clipboard for instant pasting into terminals or documents:
-```
-:wc
-```
+| `:reset` | Clear all filters |
+| `:help` | Show available commands |
 
 ## Filters
 
-### Grayscale
-Remove color, keeping only luminance values:
-```
-:gray
-```
-Toggle on and off without losing color data underneath.
+Filters apply live on the canvas and are included in exports. They are also undoable.
 
-### Palette Limiting
-Reduce color palette to match retro systems:
+- **Grayscale** (`:gray`) — luminance-based desaturation
+- **Palette limiting** (`:palette cga|gameboy|websafe`) — quantize to retro color palettes
+- **Dithering** (`:dither`) — Floyd-Steinberg error diffusion (use with a palette)
+- **Reset** (`:reset`) — remove all filters
 
-- **CGA**: 4 colors (classic PC)
-- **Game Boy**: 4 shades of green
-- **Websafe**: 216 colors
+## Export Formats
 
-```
-:palette cga
-:palette gameboy
-:palette websafe
-```
+| Extension | Format |
+|-----------|--------|
+| `.png` / `.jpg` | Image file (pixels rendered as blocks matching terminal aspect ratio) |
+| `.ans` | ANSI art with true-color escape codes |
+| `.txt` | Plain block characters, no color |
+| `:wc` | ANSI art copied to clipboard |
 
-### Dithering
-Apply Floyd-Steinberg dithering for better color approximation with limited palettes:
-```
-:dither
-```
+## Color Palette
 
-### Reset
-Clear all filters and return to original colors:
-```
-:reset
-```
+The bottom bar shows 16 MS Paint colors with their key bindings. The currently active color is highlighted. Recent colors from eyedropper picks appear alongside.
 
 ## Layout
 
@@ -158,40 +109,36 @@ Clear all filters and return to original colors:
 │ [B]│                                        │
 │ [E]│                                        │
 │ [F]│         Canvas Area                    │
-│ [D]│      (chonky █ pixels)                 │
-│ [S]│                                        │
-│ [Z]│                                        │
+│ [D]│                                        │
 │    │                                        │
 │ FG │                                        │
 │ BG │                                        │
 ├────┴────────────────────────────────────────┤
-│ ████████████████  [recent colors]           │
+│ 123456789!@#$%^  [recent colors]            │
 ├─────────────────────────────────────────────┤
-│ -- NORMAL --  brush(1)  Zoom:1x  mona.png  │
+│ -- NORMAL --  brush(1)  [x,y] WxH  Zoom:1x │
 └─────────────────────────────────────────────┘
 ```
 
-**Left panel**: Tool selector and color swatches
-**Center**: Main canvas with rendered pixels
-**Bottom bar**: Mode indicator, brush size, zoom level, filename
+## Roadmap
+
+- Visual/selection mode (rectangle select, copy/paste, move regions)
+- Zoom tool (click-to-zoom)
+- Line and shape tools (rectangle, circle, line)
+- Layers
+- Custom color picker (RGB/HSL input)
+- Import/export palette files
+- Mouse support
+- Resize canvas
+- GIF export
 
 ## Tech Stack
 
-- **Bun** — Fast JavaScript runtime and package manager
-- **TypeScript** — Type-safe code
+- **Bun** — runtime and package manager
+- **TypeScript**
 - **Ink** — React for terminal UIs
-- **sharp** — Image processing and resizing
-- **zustand** — Lightweight state management
-
-## Tips & Tricks
-
-- Use **zoom out** to see your whole image and plan big changes
-- Use **zoom in** to work on details and create ASCII art effects
-- **Eyedropper tool** (d) picks colors from your canvas, great for maintaining consistency
-- **Fill tool** (f) works in connected regions—limit it with visual mode selection
-- **Undo** (u) and **Redo** (Ctrl+R) are unlimited within your session
-- Export as **ANSI** and share terminal art with friends
-- Use **dithering** with palette limits for impressionist effects
+- **sharp** — image processing, crop/resize, text rasterization
+- **zustand** — state management
 
 ## License
 

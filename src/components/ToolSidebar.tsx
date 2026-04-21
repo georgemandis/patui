@@ -7,8 +7,6 @@ const TOOLS: { name: ToolName; icon: string; key: string }[] = [
   { name: "eraser", icon: "E", key: "e" },
   { name: "fill", icon: "F", key: "f" },
   { name: "eyedropper", icon: "D", key: "d" },
-  { name: "select", icon: "S", key: "s" },
-  { name: "zoom", icon: "Z", key: "z" },
 ];
 
 export function ToolSidebar() {

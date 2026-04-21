@@ -4,8 +4,8 @@ import type { ImageBuffer } from "../core/image-buffer.js";
 import type { EditLayer } from "../core/edit-layer.js";
 import type { Viewport } from "../core/viewport.js";
 
-export type Mode = "normal" | "paint" | "visual" | "command";
-export type ToolName = "brush" | "eraser" | "fill" | "eyedropper" | "select" | "zoom";
+export type Mode = "normal" | "paint" | "command" | "text" | "help";
+export type ToolName = "brush" | "eraser" | "fill" | "eyedropper";
 
 export interface AppState {
   mode: Mode;
@@ -24,11 +24,20 @@ export interface AppState {
   loading: boolean;
   commandText: string;
   message: string | null;
+  // The current crop region in source pixels + grid size (set by Canvas)
+  cropRegion: { x: number; y: number; w: number; h: number; gridW: number; gridH: number } | null;
+  // Help scroll offset
+  helpScroll: number;
+  // Text mode state
+  textBuffer: string;
+  textStartCol: number;
+  textStartRow: number;
   // Filter state
   grayscale: boolean;
   palette: string | null;
   dither: boolean;
 
+  setCropRegion: (crop: AppState["cropRegion"]) => void;
   setMode: (mode: Mode) => void;
   setTool: (tool: ToolName) => void;
   setFgColor: (color: RGB) => void;
@@ -73,10 +82,16 @@ export const useStore = create<AppState>((set) => ({
   loading: false,
   commandText: "",
   message: null,
+  cropRegion: null,
+  helpScroll: 0,
+  textBuffer: "",
+  textStartCol: 0,
+  textStartRow: 0,
   grayscale: false,
   palette: null,
   dither: false,
 
+  setCropRegion: (cropRegion) => set({ cropRegion }),
   setMode: (mode) => set({ mode }),
   setTool: (tool) => set((state) => ({ tool, previousTool: state.tool })),
   setFgColor: (fgColor) => set({ fgColor }),

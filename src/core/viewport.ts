@@ -35,7 +35,8 @@ export class Viewport {
   }
 
   setZoom(level: number) {
-    this.zoom = Math.max(1, level);
+    // Allow zoom < 1 to "zoom out" — each cell covers more source pixels
+    this.zoom = Math.max(0.1, level);
     this.clampPan();
   }
 
