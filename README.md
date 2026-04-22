@@ -38,6 +38,11 @@ patui https://example.com/image.png
 
 # Start with blank canvas (sized to your terminal)
 patui
+
+# CLI options
+patui --help              # Show usage
+patui --version           # Show version
+patui --new 200x100       # Start with 200x100 blank canvas
 ```
 
 If running from source, replace `patui` with `bun src/index.tsx`.
@@ -115,6 +120,8 @@ Press `t` to enter text mode. Characters you type are rasterized onto the source
 
 The bottom bar shows all 16 colors. Active color is highlighted. Eyedropper picks appear in the recent colors section.
 
+Commands also accept CSS color names: `:color red`, `:set fg navy`, `:set bg tomato`. All 148 CSS named colors are supported.
+
 ## Commands
 
 | Command | Action |
@@ -127,9 +134,11 @@ The bottom bar shows all 16 colors. Active color is highlighted. Eyedropper pick
 | `:q` or `:q!` | Quit |
 | `:set zoom N` | Set zoom level |
 | `:set brush N` | Set brush size |
-| `:set fg N` | Set foreground to palette color 1-16 |
-| `:set bg N` | Set background to palette color 1-16 |
-| `:color N` | Select foreground palette color 1-16 |
+| `:set fg <name-or-N>` | Set foreground color (CSS name or 1-16) |
+| `:set bg <name-or-N>` | Set background color (CSS name or 1-16) |
+| `:color <name-or-N>` | Select foreground color (CSS name or 1-16) |
+| `:%s/blue/red/g` | Replace all blue pixels with red (exact) |
+| `:%s/~blue/red/g` | Replace blue-family pixels with red (fuzzy) |
 | `:goto X Y` or `:g X Y` | Jump to source pixel (supports `50%` for percentages) |
 | `:gray` | Toggle grayscale filter |
 | `:palette <name>` | Limit colors (`cga`, `gameboy`, `websafe`) |
