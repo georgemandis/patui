@@ -164,12 +164,12 @@ export function resolveColor(input: string): RGB | null {
   const lower = input.toLowerCase();
 
   if (lower in CSS_COLORS) {
-    return CSS_COLORS[lower];
+    return { ...CSS_COLORS[lower] };
   }
 
   const n = parseInt(lower, 10);
   if (!isNaN(n) && n >= 1 && n <= 16 && String(n) === lower) {
-    return MS_PAINT_PALETTE[n - 1];
+    return { ...MS_PAINT_PALETTE[n - 1] };
   }
 
   return null;
