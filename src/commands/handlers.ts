@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import { parseCommand } from "./parser.js";
 import { useStore, MS_PAINT_PALETTE } from "../state/store.js";
+import { resolveColor } from "../core/colors.js";
 import { ImageBuffer } from "../core/image-buffer.js";
 import { EditLayer } from "../core/edit-layer.js";
 import { Viewport } from "../core/viewport.js";
@@ -129,20 +130,20 @@ export async function executeCommand(input: string) {
       } else if (prop === "brush") {
         useStore.setState({ brushSize: parseInt(value) || 1 });
       } else if (prop === "fg") {
-        const n = parseInt(value);
-        if (n >= 1 && n <= 16 && MS_PAINT_PALETTE[n - 1]) {
-          store.setFgColor(MS_PAINT_PALETTE[n - 1]);
-          store.setMessage(`FG color ${n}`);
+        const color = resolveColor(value || "");
+        if (color) {
+          store.setFgColor(color);
+          store.setMessage(`FG: ${value}`);
         } else {
-          store.setMessage("Usage: :set fg 1-16");
+          store.setMessage("Usage: :set fg <name-or-number>");
         }
       } else if (prop === "bg") {
-        const n = parseInt(value);
-        if (n >= 1 && n <= 16 && MS_PAINT_PALETTE[n - 1]) {
-          store.setBgColor(MS_PAINT_PALETTE[n - 1]);
-          store.setMessage(`BG color ${n}`);
+        const color = resolveColor(value || "");
+        if (color) {
+          store.setBgColor(color);
+          store.setMessage(`BG: ${value}`);
         } else {
-          store.setMessage("Usage: :set bg 1-16");
+          store.setMessage("Usage: :set bg <name-or-number>");
         }
       }
       break;
@@ -224,13 +225,13 @@ export async function executeCommand(input: string) {
 
     case "color":
     case "c": {
-      const n = parseInt(args[0]);
-      if (isNaN(n) || n < 1 || n > 16) {
-        store.setMessage("Usage: :color 1-16");
+      const color = resolveColor(args[0] || "");
+      if (!color) {
+        store.setMessage("Usage: :color <name-or-number> (CSS name or 1-16)");
         break;
       }
-      store.setFgColor(MS_PAINT_PALETTE[n - 1]);
-      store.setMessage(`Color ${n}`);
+      store.setFgColor(color);
+      store.setMessage(`Color: ${args[0]}`);
       break;
     }
 
