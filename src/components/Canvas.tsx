@@ -43,8 +43,8 @@ export function Canvas() {
 
   // Track previous cursor position for direct ANSI updates
   const prevCursorRef = useRef({ col: -1, row: -1, brushW: 1, brushH: 1 });
-  // Track whether the pixel grid changed (need full Ink render) vs just cursor moved
-  const lastFilteredRef = useRef<RGB[][] | null>(null);
+  // Track previous grid dimensions to clear stale cells on zoom out
+  const prevGridSize = useRef({ cols: 0, rows: 0 });
 
   // Cursor color animation
   useEffect(() => {
@@ -141,9 +141,35 @@ export function Canvas() {
     return applyFilters(grid, { grayscale: gsFilter, palette: paletteFilter, dither: ditherFilter });
   }, [resized, editLayer, gsFilter, paletteFilter, ditherFilter]);
 
-  // Reset ANSI cursor state when the pixel grid changes (zoom, paint, filter)
-  // so we don't try to restore stale cells from a previous grid size
+  // When the pixel grid changes, reset cursor tracking and clear any ghost cells
   useEffect(() => {
+    if (!filtered) return;
+    const newCols = filtered[0]?.length ?? 0;
+    const newRows = filtered.length;
+    const oldCols = prevGridSize.current.cols;
+    const oldRows = prevGridSize.current.rows;
+
+    // Clear rows that no longer have image data
+    if (oldRows > newRows || oldCols > newCols) {
+      let clear = "";
+      for (let row = 0; row < Math.max(oldRows, newRows); row++) {
+        const startCol = row < newRows ? newCols : 0;
+        const endCol = oldCols;
+        if (startCol < endCol) {
+          // Move to start of stale region, clear to end of old grid
+          clear += `\x1b[${CANVAS_OFFSET_Y + row + 1};${CANVAS_OFFSET_X + startCol + 1}H`;
+          clear += " ".repeat(endCol - startCol);
+        }
+      }
+      // Clear full rows below new grid
+      for (let row = newRows; row < oldRows; row++) {
+        clear += `\x1b[${CANVAS_OFFSET_Y + row + 1};${CANVAS_OFFSET_X + 1}H`;
+        clear += " ".repeat(oldCols);
+      }
+      if (clear) process.stdout.write(clear);
+    }
+
+    prevGridSize.current = { cols: newCols, rows: newRows };
     prevCursorRef.current = { col: -1, row: -1, brushW: 1, brushH: 1 };
   }, [filtered]);
 
