@@ -84,8 +84,8 @@ export function Canvas() {
     const cursorSrcX = prevX + (cursorCol / (resized?.width || targetCols)) * prevW;
     const cursorSrcY = prevY + (cursorRow / (resized?.height || targetRows)) * prevH;
 
-    // Edge-scroll: only move the crop when the cursor pushes past an edge.
-    // Reuse previous crop position and nudge it just enough to keep cursor visible.
+    // Edge-scroll: only move the crop when the cursor is at a grid edge
+    // and there's more image to reveal in that direction.
     let cropX = prevX;
     let cropY = prevY;
 
@@ -94,12 +94,24 @@ export function Canvas() {
       cropX = cursorSrcX - cropW / 2;
       cropY = cursorSrcY - cropH / 2;
     } else {
-      // Nudge horizontally if cursor is outside crop
-      if (cursorSrcX < cropX) cropX = cursorSrcX;
-      else if (cursorSrcX >= cropX + cropW) cropX = cursorSrcX - cropW + srcPerCell;
-      // Nudge vertically
-      if (cursorSrcY < cropY) cropY = cursorSrcY;
-      else if (cursorSrcY >= cropY + cropH) cropY = cursorSrcY - cropH + srcPerCell * CELL_ASPECT;
+      const cellW = cropW / targetCols;
+      const cellH = cropH / targetRows;
+      // Scroll right: cursor at right edge, more image to the right
+      if (cursorCol >= targetCols - 1 && cropX + cropW < image.width) {
+        cropX += cellW;
+      }
+      // Scroll left: cursor at left edge, more image to the left
+      if (cursorCol <= 0 && cropX > 0) {
+        cropX -= cellW;
+      }
+      // Scroll down: cursor at bottom edge, more image below
+      if (cursorRow >= targetRows - 1 && cropY + cropH < image.height) {
+        cropY += cellH;
+      }
+      // Scroll up: cursor at top edge, more image above
+      if (cursorRow <= 0 && cropY > 0) {
+        cropY -= cellH;
+      }
     }
 
     // Clamp so we don't go outside the image
