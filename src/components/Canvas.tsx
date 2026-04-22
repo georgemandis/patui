@@ -141,6 +141,12 @@ export function Canvas() {
     return applyFilters(grid, { grayscale: gsFilter, palette: paletteFilter, dither: ditherFilter });
   }, [resized, editLayer, gsFilter, paletteFilter, ditherFilter]);
 
+  // Reset ANSI cursor state when the pixel grid changes (zoom, paint, filter)
+  // so we don't try to restore stale cells from a previous grid size
+  useEffect(() => {
+    prevCursorRef.current = { col: -1, row: -1, brushW: 1, brushH: 1 };
+  }, [filtered]);
+
   // Direct ANSI cursor update — runs on every cursor/tick change WITHOUT re-rendering React
   useEffect(() => {
     if (!filtered) return;
@@ -221,6 +227,12 @@ export function Canvas() {
     }
 
     rows.push(<Box key={row}>{cells}</Box>);
+  }
+
+  // Pad with empty rows so the canvas always fills termSize.h,
+  // keeping the bottom bars pinned to the terminal bottom
+  for (let row = filtered.length; row < termSize.h; row++) {
+    rows.push(<Box key={`pad-${row}`}><Text> </Text></Box>);
   }
 
   return (
