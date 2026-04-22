@@ -15,6 +15,8 @@ export interface ToolContext {
   fgColor: RGB;
   bgColor: RGB;
   brushSize: number;
+  brushW: number;
+  brushH: number;
   /** The viewport cell the cursor is on */
   col: number;
   row: number;
@@ -30,18 +32,19 @@ export function cellToSource(crop: CropRegion, col: number, row: number): { x: n
   };
 }
 
-/** Map a grid cell to source region (for brush size > 1, use brushSize param) */
-export function cellToSourceRegion(crop: CropRegion, col: number, row: number, brushSize: number = 1): { x: number; y: number; w: number; h: number } {
+/** Map a grid cell to source region with separate width/height brush dimensions */
+export function cellToSourceRegion(crop: CropRegion, col: number, row: number, brushW: number = 1, brushH: number = 1): { x: number; y: number; w: number; h: number } {
   const srcPixelW = crop.w / crop.gridW;
   const srcPixelH = crop.h / crop.gridH;
-  const half = Math.floor(brushSize / 2);
-  const startCol = col - half;
-  const startRow = row - half;
+  const halfW = Math.floor(brushW / 2);
+  const halfH = Math.floor(brushH / 2);
+  const startCol = col - halfW;
+  const startRow = row - halfH;
   return {
     x: Math.floor(crop.x + (startCol / crop.gridW) * crop.w),
     y: Math.floor(crop.y + (startRow / crop.gridH) * crop.h),
-    w: Math.ceil(srcPixelW * brushSize),
-    h: Math.ceil(srcPixelH * brushSize),
+    w: Math.ceil(srcPixelW * brushW),
+    h: Math.ceil(srcPixelH * brushH),
   };
 }
 

@@ -15,6 +15,8 @@ export interface AppState {
   bgColor: RGB;
   recentColors: RGB[];
   brushSize: number;
+  brushW: number;
+  brushH: number;
   image: ImageBuffer | null;
   editLayer: EditLayer | null;
   viewport: Viewport | null;
@@ -75,6 +77,8 @@ export const useStore = create<AppState>((set) => ({
   bgColor: { r: 255, g: 255, b: 255 },
   recentColors: [],
   brushSize: 1,
+  brushW: 1,
+  brushH: 1,
   image: null,
   editLayer: null,
   viewport: null,

@@ -133,7 +133,8 @@ Commands also accept CSS color names: `:color red`, `:set fg navy`, `:set bg tom
 | `:wq [file]` | Export PNG and quit |
 | `:q` or `:q!` | Quit |
 | `:set zoom N` | Set zoom level |
-| `:set brush N` | Set brush size |
+| `:set brush N` | Set brush size (NxN) |
+| `:set brush W,H` | Set brush size (WxH, e.g. `3,1`) |
 | `:set fg <name-or-N>` | Set foreground color (CSS name or 1-16) |
 | `:set bg <name-or-N>` | Set background color (CSS name or 1-16) |
 | `:color <name-or-N>` | Select foreground color (CSS name or 1-16) |

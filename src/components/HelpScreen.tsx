@@ -93,7 +93,8 @@ const HELP_LINES = `
   :wq [file]             Export PNG and quit
   :q / :q!               Quit
   :set zoom N            Set zoom level
-  :set brush N           Set brush size
+  :set brush N           Set brush size (NxN)
+  :set brush W,H         Set brush size (WxH, e.g. 3,1)
   :set fg <name-or-N>    Set foreground (CSS name or palette 1-16)
   :set bg <name-or-N>    Set background (CSS name or palette 1-16)
   :color <name-or-N>     Select foreground color (CSS name or 1-16)

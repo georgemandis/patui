@@ -11,7 +11,8 @@ const MODE_LABELS: Record<string, string> = {
 export function StatusBar() {
   const mode = useStore((s) => s.mode);
   const tool = useStore((s) => s.tool);
-  const brushSize = useStore((s) => s.brushSize);
+  const brushW = useStore((s) => s.brushW);
+  const brushH = useStore((s) => s.brushH);
   const viewport = useStore((s) => s.viewport);
   const image = useStore((s) => s.image);
   const filename = useStore((s) => s.filename);
@@ -43,7 +44,7 @@ export function StatusBar() {
         <Text color="gray">{message}</Text>
       ) : (
         <>
-          <Text color="white">{tool}({brushSize})</Text>
+          <Text color="white">{tool}({brushW === brushH ? brushW : `${brushW}x${brushH}`})</Text>
           <Text color="cyan">[{pixelInfo}] {dims}</Text>
           <Text color="white">Zoom:{zoom}x</Text>
           <Text color="gray">{filename ?? "[no file]"}</Text>

@@ -45,6 +45,8 @@ function buildToolContext(): ToolContext | null {
     fgColor: s.fgColor,
     bgColor: s.bgColor,
     brushSize: s.brushSize,
+    brushW: s.brushW,
+    brushH: s.brushH,
     col: s.cursorCol,
     row: s.cursorRow,
     cropRegion: s.cropRegion,
@@ -615,7 +617,7 @@ export function useInputHandler() {
         if (buf.length > 0) {
           const newBuf = buf.slice(0, -1);
           useStore.setState({ textBuffer: newBuf });
-          for (let i = 0; i < store.brushSize; i++) store.moveCursor(-1, 0);
+          for (let i = 0; i < store.brushW; i++) store.moveCursor(-1, 0);
           store.setMessage(`-- TEXT -- ${newBuf}|`);
           if (newBuf) {
             previewText(newBuf);
@@ -652,8 +654,8 @@ export function useInputHandler() {
       if (input && !key.ctrl && !key.meta) {
         const newBuf = store.textBuffer + input;
         useStore.setState({ textBuffer: newBuf });
-        // Advance cursor rightward by brushSize cells (matches font width)
-        for (let i = 0; i < store.brushSize; i++) store.moveCursor(1, 0);
+        // Advance cursor rightward by brushW cells (matches font width)
+        for (let i = 0; i < store.brushW; i++) store.moveCursor(1, 0);
         store.setMessage(`-- TEXT -- ${newBuf}|`);
 
         // Live preview: rasterize as we type
@@ -667,16 +669,15 @@ export function useInputHandler() {
 }
 
 /**
- * Font size in source pixels, scaled by brushSize.
- * At brushSize=1, each character is ~1 cell wide on screen.
- * Increase brushSize to make text bigger (brushSize=5 → 5 cells per char).
+ * Font size in source pixels, scaled by brushW.
+ * At brushW=1, each character is ~1 cell wide on screen.
  * Monospace glyphs are roughly 0.6× font-size wide.
  */
 function getTextFontSize(): number {
   const store = useStore.getState();
   if (!store.cropRegion) return 16;
   const srcPerCellW = store.cropRegion.w / store.cropRegion.gridW;
-  return Math.round((srcPerCellW * store.brushSize) / 0.6);
+  return Math.round((srcPerCellW * store.brushW) / 0.6);
 }
 
 /** Preview text by rasterizing onto the base layer (before text mode started) */

@@ -196,7 +196,11 @@ export async function executeCommand(input: string) {
         // Clone viewport so zustand detects the change
         store.setViewport(Object.assign(Object.create(Object.getPrototypeOf(store.viewport)), store.viewport));
       } else if (prop === "brush") {
-        useStore.setState({ brushSize: parseInt(value) || 1 });
+        // Accept "N" for NxN or "W,H" for WxH
+        const parts = (value || "1").split(",");
+        const w = Math.max(1, parseInt(parts[0]) || 1);
+        const h = parts.length > 1 ? Math.max(1, parseInt(parts[1]) || 1) : w;
+        useStore.setState({ brushSize: Math.max(w, h), brushW: w, brushH: h });
       } else if (prop === "fg") {
         const color = resolveColor(value || "");
         if (color) {
