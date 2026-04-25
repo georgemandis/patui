@@ -185,6 +185,21 @@ Filters apply live on the canvas and are included in exports. All filter changes
 └─────────────────────────────────────────────┘
 ```
 
+## Known Limitations
+
+### Piping stdin (`cat image.jpg | patui`)
+
+Piping image data via stdin is not currently supported. Ink (the React-for-terminals framework) requires a TTY on stdin for raw mode keyboard input, and there's no reliable cross-platform way to reclaim the terminal after consuming piped data — Bun's `tty.ReadStream` on `/dev/tty` doesn't work for reading, and all re-exec/PTY-allocation approaches we've tried have issues. For now, save to a file first:
+
+```bash
+# Instead of: curl https://example.com/image.png | patui
+# Do this:
+curl -o /tmp/image.png https://example.com/image.png && patui /tmp/image.png
+
+# Or just pass the URL directly:
+patui https://example.com/image.png
+```
+
 ## Roadmap
 
 - Visual/selection mode (rectangle select, copy/paste, move regions)
