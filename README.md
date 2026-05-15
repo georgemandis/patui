@@ -1,10 +1,12 @@
 # PaTUI
 
-> *The elegance of MS Paint meets the user-friendliness of Vim wrapped in the performance of JavaScript.*
+*The elegance of MS Paint meets the user-friendliness of Vim wrapped in the performance of JavaScript.*
 
-> *PaTUI: sounds like "patooey" — because that's what your images will look like.*
+![Screenshot of PaTUI with the word "PaTUI" drawn in the terminal in bright colors, with a smiley face](https://georgemandis.s3-us-west-1.amazonaws.com/patui/patui-splash.png)
 
 A terminal-based image editor with Vim-style modal controls. Load images (PNG, JPEG, or URLs) and render them as colored block characters in your terminal. Paint, erase, fill, type text, apply retro filters, and export your work as PNG, ANSI art, or plain text.
+
+*PaTUI: sounds like "patooey" — because that's what your images will look like.*
 
 ## Installation
 
